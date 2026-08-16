@@ -71,6 +71,105 @@ async function run() {
 
       res.send(result);
     });
+//my ideas get
+app.get("/my-ideas", async (req, res) => {
+  try {
+    const email = req.query.email;
+
+    if (!email) {
+      return res.status(400).send({
+        message: "Email is required",
+      });
+    }
+
+    const result = await ideaCollection
+      .find({ postedByEmail: email })
+      .sort({ _id: -1 })
+      .toArray();
+
+    res.send(result);
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).send({
+      message: error.message,
+    });
+  }
+});
+
+// my ideas updated
+app.patch("/ideas/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const updateData = req.body;
+
+    delete updateData._id;
+    delete updateData.postedByEmail;
+    delete updateData.postedBy;
+    delete updateData.createdAt;
+
+    const result = await ideaCollection.updateOne(
+      {
+        _id: new ObjectId(id),
+      },
+      {
+        $set: updateData,
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).send({
+        message: "Idea not found",
+      });
+    }
+
+    res.send({
+      success: true,
+      message: "Idea updated successfully",
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).send({
+      message: error.message,
+    });
+  }
+});
+
+// my ideas delete
+app.delete("/ideas/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await ideaCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).send({
+        message: "Idea not found",
+      });
+    }
+
+    res.send({
+      success: true,
+      message: "Idea deleted successfully",
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).send({
+      message: error.message,
+    });
+  }
+});
+
+
+
 
     // comment get,add, update, delete added start
     app.get("/ideas/:id/comments", async (req, res) => {
