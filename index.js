@@ -38,30 +38,23 @@ async function run() {
     //   const result = await ideaCollection.find().toArray();
     //   res.send(result);
     // });
-    
 
-app.get("/ideas", async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) ;
+    app.get("/ideas", async (req, res) => {
+      try {
+        const limit = parseInt(req.query.limit);
 
-    const pipeline = [
-      {$sort: {_id:-1} }
-    ]
-    if(!isNaN(limit)){
-      pipeline.push({$limit:limit})
-    }
+        const pipeline = [{ $sort: { _id: -1 } }];
+        if (!isNaN(limit)) {
+          pipeline.push({ $limit: limit });
+        }
 
-    const result = await ideaCollection
-      .aggregate(pipeline)
-      .toArray();
+        const result = await ideaCollection.aggregate(pipeline).toArray();
 
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ message: error.message });
-  }
-});
-
-
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: error.message });
+      }
+    });
 
     app.post("/ideas", async (req, res) => {
       const ideaData = req.body;
@@ -79,232 +72,207 @@ app.get("/ideas", async (req, res) => {
       res.send(result);
     });
 
-// comment get,add, update, delete added start
-app.get("/ideas/:id/comments", async (req, res) => {
-  try {
-    const { id } = req.params;
+    // comment get,add, update, delete added start
+    app.get("/ideas/:id/comments", async (req, res) => {
+      try {
+        const { id } = req.params;
 
-    const idea = await ideaCollection.findOne(
-      { _id: new ObjectId(id) },
-      { projection: { comments: 1 } }
-    );
+        const idea = await ideaCollection.findOne(
+          { _id: new ObjectId(id) },
+          { projection: { comments: 1 } },
+        );
 
-    res.send(idea?.comments || []);
-  } catch (error) {
-    res.status(500).send({ message: error.message });
-  }
-});
-//post add
-app.post("/ideas/:id/comments", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const {
-      userId,
-      userName,
-      photoURL,
-      text,
-    } = req.body;
-
-    if (!userId || !userName || !text?.trim()) {
-      return res.status(400).send({
-        message: "User and comment text are required.",
-      });
-    }
-
-    const comment = {
-      _id: randomUUID(),
-
-      // Logged-in user's Better Auth ID
-      userId,
-
-      // Original user's name
-      userName,
-
-      // Original user's profile image
-      photoURL: photoURL || "",
-
-      text: text.trim(),
-
-      createdAt: new Date(),
-    };
-
-    const result = await ideaCollection.updateOne(
-      { _id: new ObjectId(id) },
-      {
-        $push: {
-          comments: comment,
-        },
+        res.send(idea?.comments || []);
+      } catch (error) {
+        res.status(500).send({ message: error.message });
       }
-    );
-
-    if (result.matchedCount === 0) {
-      return res.status(404).send({
-        message: "Idea not found.",
-      });
-    }
-
-    res.send(comment);
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).send({
-      message: error.message,
     });
-  }
-});
-// old post
-app.post("/ideas/:id/comments", async (req, res) => {
-  try {
-    const { id } = req.params;
+    //post add
+    app.post("/ideas/:id/comments", async (req, res) => {
+      try {
+        const { id } = req.params;
 
-   
-    const { userId, userName, photoURL, text } = req.body;
+        const { userId, userName, photoURL, text } = req.body;
 
-    const comment = {
-      _id: randomUUID(),
-      userName,
-      photoURL: photoURL || "",
-      text,
-      createdAt: new Date(),
-    };
-
-    await ideaCollection.updateOne(
-      { _id: new ObjectId(id) },
-      {
-        $push: {
-          comments: comment,
-        },
-      }
-    );
-
-    res.send(comment);
-  } catch (error) {
-    res.status(500).send({ message: error.message });
-  }
-});
-
-//update
-app.patch(
-  "/ideas/:ideaId/comments/:commentId",
-  async (req, res) => {
-    try {
-      const {
-        ideaId,
-        commentId,
-      } = req.params;
-
-      const {
-        userId,
-        text,
-      } = req.body;
-
-      if (!userId || !text?.trim()) {
-        return res.status(400).send({
-          message: "User ID and comment text are required.",
-        });
-      }
-
-      const result = await ideaCollection.updateOne(
-        {
-          _id: new ObjectId(ideaId),
-
-          "comments._id": commentId,
-
-          // IMPORTANT:
-          // Only original commenter can edit
-          "comments.userId": userId,
-        },
-        {
-          $set: {
-            "comments.$.text": text.trim(),
-          },
+        if (!userId || !userName || !text?.trim()) {
+          return res.status(400).send({
+            message: "User and comment text are required.",
+          });
         }
-      );
 
-      if (result.matchedCount === 0) {
-        return res.status(403).send({
-          message:
-            "You are not allowed to edit this comment.",
-        });
-      }
+        const comment = {
+          _id: randomUUID(),
 
-      res.send({
-        success: true,
-        message: "Comment updated successfully.",
-      });
-    } catch (error) {
-      console.error(error);
+          // Logged-in user's Better Auth ID
+          userId,
 
-      res.status(500).send({
-        message: error.message,
-      });
-    }
-  }
-);
-//delete
-app.delete(
-  "/ideas/:ideaId/comments/:commentId",
-  async (req, res) => {
-    try {
-      const {
-        ideaId,
-        commentId,
-      } = req.params;
+          // Original user's name
+          userName,
 
-      const { userId } = req.body;
+          // Original user's profile image
+          photoURL: photoURL || "",
 
-      if (!userId) {
-        return res.status(400).send({
-          message: "User ID is required.",
-        });
-      }
+          text: text.trim(),
 
-      const result = await ideaCollection.updateOne(
-        {
-          _id: new ObjectId(ideaId),
+          createdAt: new Date(),
+        };
 
-          "comments._id": commentId,
-
-          // IMPORTANT:
-          // Only original commenter can delete
-          "comments.userId": userId,
-        },
-        {
-          $pull: {
-            comments: {
-              _id: commentId,
-              userId: userId,
+        const result = await ideaCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $push: {
+              comments: comment,
             },
           },
-        }
-      );
+        );
 
-      if (result.matchedCount === 0) {
-        return res.status(403).send({
-          message:
-            "You are not allowed to delete this comment.",
+        if (result.matchedCount === 0) {
+          return res.status(404).send({
+            message: "Idea not found.",
+          });
+        }
+
+        res.send(comment);
+      } catch (error) {
+        console.error(error);
+
+        res.status(500).send({
+          message: error.message,
         });
       }
+    });
+    // old post
+    app.post("/ideas/:id/comments", async (req, res) => {
+      try {
+        const { id } = req.params;
 
-      res.send({
-        success: true,
-        message: "Comment deleted successfully.",
-      });
-    } catch (error) {
-      console.error(error);
+        const { userName, photoURL, email, text } = req.body;
 
-      res.status(500).send({
-        message: error.message,
-      });
-    }
-  }
-);
+        const comment = {
+          _id: randomUUID(),
+          userName,
+          email: email || "",
+          photoURL: photoURL || "",
+          text,
+          createdAt: new Date(),
+        };
 
+        await ideaCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $push: {
+              comments: comment,
+            },
+          },
+        );
 
-// comment get,add, update, delete added end
+        res.send(comment);
+      } catch (error) {
+        res.status(500).send({ message: error.message });
+      }
+    });
 
+    //update
+    app.patch("/ideas/:ideaId/comments/:commentId", async (req, res) => {
+      try {
+        const { ideaId, commentId } = req.params;
 
+        const { userId, text } = req.body;
+
+        if (!userId || !text?.trim()) {
+          return res.status(400).send({
+            message: "User ID and comment text are required.",
+          });
+        }
+
+        const result = await ideaCollection.updateOne(
+          {
+            _id: new ObjectId(ideaId),
+
+            "comments._id": commentId,
+
+            // IMPORTANT:
+            // Only original commenter can edit
+            "comments.userId": userId,
+          },
+          {
+            $set: {
+              "comments.$.text": text.trim(),
+            },
+          },
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(403).send({
+            message: "You are not allowed to edit this comment.",
+          });
+        }
+
+        res.send({
+          success: true,
+          message: "Comment updated successfully.",
+        });
+      } catch (error) {
+        console.error(error);
+
+        res.status(500).send({
+          message: error.message,
+        });
+      }
+    });
+    //delete
+    app.delete("/ideas/:ideaId/comments/:commentId", async (req, res) => {
+      try {
+        const { ideaId, commentId } = req.params;
+
+        const { userId } = req.body;
+
+        if (!userId) {
+          return res.status(400).send({
+            message: "User ID is required.",
+          });
+        }
+
+        const result = await ideaCollection.updateOne(
+          {
+            _id: new ObjectId(ideaId),
+
+            "comments._id": commentId,
+
+            // IMPORTANT:
+            // Only original commenter can delete
+            "comments.userId": userId,
+          },
+          {
+            $pull: {
+              comments: {
+                _id: commentId,
+                userId: userId,
+              },
+            },
+          },
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(403).send({
+            message: "You are not allowed to delete this comment.",
+          });
+        }
+
+        res.send({
+          success: true,
+          message: "Comment deleted successfully.",
+        });
+      } catch (error) {
+        console.error(error);
+
+        res.status(500).send({
+          message: error.message,
+        });
+      }
+    });
+
+    // comment get,add, update, delete added end
 
     await client.db("admin").command({ ping: 1 });
     console.log(
