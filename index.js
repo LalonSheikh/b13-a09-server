@@ -64,112 +64,121 @@ async function run() {
       res.json(result);
     });
 
-    app.get("/ideas/:id", async (req, res) => {
-      const { id } = req.params;
+    //middleware
 
-      const result = await ideaCollection.findOne({ _id: new ObjectId(id) });
+    app.get(
+      "/ideas/:id",
+      (req, res, next) => {
+        const header = req.headers.authorization;
+        console.log(header);
+   
+          next();
+      
+          res.status(401).json({ message: "Unauthorized" });
+        }
+      
+      ,
+      async (req, res) => {
+        const { id } = req.params;
 
-      res.send(result);
-    });
-//my ideas get
-app.get("/my-ideas", async (req, res) => {
-  try {
-    const email = req.query.email;
+        const result = await ideaCollection.findOne({ _id: new ObjectId(id) });
 
-    if (!email) {
-      return res.status(400).send({
-        message: "Email is required",
-      });
-    }
-
-    const result = await ideaCollection
-      .find({ postedByEmail: email })
-      .sort({ _id: -1 })
-      .toArray();
-
-    res.send(result);
-
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).send({
-      message: error.message,
-    });
-  }
-});
-
-// my ideas updated
-app.patch("/ideas/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const updateData = req.body;
-
-    delete updateData._id;
-    delete updateData.postedByEmail;
-    delete updateData.postedBy;
-    delete updateData.createdAt;
-
-    const result = await ideaCollection.updateOne(
-      {
-        _id: new ObjectId(id),
+        res.send(result);
       },
-      {
-        $set: updateData,
-      }
     );
+    //my ideas get
+    app.get("/my-ideas", async (req, res) => {
+      try {
+        const email = req.query.email;
 
-    if (result.matchedCount === 0) {
-      return res.status(404).send({
-        message: "Idea not found",
-      });
-    }
+        if (!email) {
+          return res.status(400).send({
+            message: "Email is required",
+          });
+        }
 
-    res.send({
-      success: true,
-      message: "Idea updated successfully",
+        const result = await ideaCollection
+          .find({ postedByEmail: email })
+          .sort({ _id: -1 })
+          .toArray();
+
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+
+        res.status(500).send({
+          message: error.message,
+        });
+      }
     });
 
-  } catch (error) {
-    console.error(error);
+    // my ideas updated
+    app.patch("/ideas/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
 
-    res.status(500).send({
-      message: error.message,
+        const updateData = req.body;
+
+        delete updateData._id;
+        delete updateData.postedByEmail;
+        delete updateData.postedBy;
+        delete updateData.createdAt;
+
+        const result = await ideaCollection.updateOne(
+          {
+            _id: new ObjectId(id),
+          },
+          {
+            $set: updateData,
+          },
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(404).send({
+            message: "Idea not found",
+          });
+        }
+
+        res.send({
+          success: true,
+          message: "Idea updated successfully",
+        });
+      } catch (error) {
+        console.error(error);
+
+        res.status(500).send({
+          message: error.message,
+        });
+      }
     });
-  }
-});
 
-// my ideas delete
-app.delete("/ideas/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
+    // my ideas delete
+    app.delete("/ideas/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
 
-    const result = await ideaCollection.deleteOne({
-      _id: new ObjectId(id),
+        const result = await ideaCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+        if (result.deletedCount === 0) {
+          return res.status(404).send({
+            message: "Idea not found",
+          });
+        }
+
+        res.send({
+          success: true,
+          message: "Idea deleted successfully",
+        });
+      } catch (error) {
+        console.error(error);
+
+        res.status(500).send({
+          message: error.message,
+        });
+      }
     });
-
-    if (result.deletedCount === 0) {
-      return res.status(404).send({
-        message: "Idea not found",
-      });
-    }
-
-    res.send({
-      success: true,
-      message: "Idea deleted successfully",
-    });
-
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).send({
-      message: error.message,
-    });
-  }
-});
-
-
-
 
     // comment get,add, update, delete added start
     app.get("/ideas/:id/comments", async (req, res) => {
